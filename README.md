@@ -3,22 +3,12 @@
 [![PyPI](https://img.shields.io/pypi/v/aisuite)](https://pypi.org/project/aisuite/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Simple, unified interface to multiple AI providers.
+Simple, unified interface to multiple Generative AI providers.
 
-`aisuite` makes it easy for developers to interact with multiple AI services through a standardized interface. Using an interface similar to OpenAI's, `aisuite` supports **chat completions** and **audio transcription**, making it easy to work with the most popular AI providers and compare results. It is a thin wrapper around python client libraries, and allows creators to seamlessly swap out and test different providers without changing their code.
+`aisuite` makes it easy for developers to interact with multiple Gen-AI services through a standardized interface. Using an interface similar to OpenAI's, `aisuite` supports **chat completions** and **audio transcription**, making it easy to work with the most popular AI providers and compare results. It is a thin wrapper around python client libraries, and allows creators to seamlessly swap out and test different providers without changing their code.
 
-Currently supported providers are:
-- Anthropic
-- AWS
-- Azure
-- Cerebras
-- Google
-- Groq
-- HuggingFace Ollama
-- Mistral
-- OpenAI
-- Sambanova
-- Watsonx
+All of the top providers are supported.
+Sample list of supported providers include - Anthropic, AWS, Azure, Cerebras, Cohere, Google, Groq, HuggingFace, Ollama, Mistral, OpenAI, Sambanova, Watsonx and others.
 
 To maximize stability, `aisuite` uses either the HTTP endpoint or the SDK for making calls to the provider.
 
