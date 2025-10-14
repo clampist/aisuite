@@ -293,6 +293,15 @@ result = client.audio.transcriptions.create(
 )
 ```
 
+**Hugging Face:**
+```python
+result = client.audio.transcriptions.create(
+    model="huggingface:openai/whisper-large-v3",
+    file="presentation.mp3",
+    return_timestamps="word"                  # Word-level timestamps
+)
+```
+
 ### Streaming Transcription
 
 For real-time or large audio files, use streaming:
@@ -316,11 +325,10 @@ asyncio.run(transcribe_stream())
 
 ### Supported Providers
 
-| Provider | Models | Key Features | Status |
-|----------|--------|--------------|--------|
-| **OpenAI** | `whisper-1` | Multi-language, word timestamps | ✅ Stable |
-| **Deepgram** | `nova-2`, `nova`, `enhanced`, `base` | Real-time, diarization, sentiment | ✅ Stable |
-| **Google** | `default`, `latest_long`, `latest_short` | Speaker diarization, phrase hints | ✅ Stable |
+- **OpenAI**: `whisper-1`
+- **Deepgram**: `nova-2`, `nova`, `enhanced`, `base`
+- **Google**: `default`, `latest_long`, `latest_short`
+- **Hugging Face**: `openai/whisper-large-v3`, `openai/whisper-tiny`, `facebook/wav2vec2-base-960h`, `facebook/wav2vec2-large-xlsr-53`
 
 ### Installation
 
@@ -331,6 +339,7 @@ Install transcription providers:
 pip install 'aisuite[openai]'      # For OpenAI Whisper
 pip install 'aisuite[deepgram]'    # For Deepgram
 pip install 'aisuite[google]'      # For Google Speech-to-Text
+pip install 'aisuite[huggingface]' # For Hugging Face models
 
 # Install all providers
 pip install 'aisuite[all]'
@@ -342,6 +351,7 @@ Set API keys:
 export OPENAI_API_KEY="your-openai-api-key"
 export DEEPGRAM_API_KEY="your-deepgram-api-key"
 export GOOGLE_APPLICATION_CREDENTIALS="path/to/credentials.json"
+export HF_TOKEN="your-huggingface-token"
 ```
 
 For more examples and advanced usage, check out `examples/asr_example.ipynb`.
