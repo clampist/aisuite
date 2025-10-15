@@ -77,6 +77,7 @@ def get_test_asr_models() -> List[str]:
         "openai:whisper-1",
         "deepgram:nova-2",
         "google:latest_long",
+        "huggingface:openai/whisper-large-v3",
     ]
 
 
@@ -199,6 +200,43 @@ def test_asr_google_language_mapping():
         pytest.skip("Test audio file not found. Skipping Google mapping test.")
     except Exception as e:
         pytest.fail(f"Error testing Google language mapping: {str(e)}")
+
+
+@pytest.mark.integration
+def test_asr_huggingface_word_timestamps():
+    """
+    Test Hugging Face word-level timestamps feature.
+
+    This ensures that provider-specific parameters like 'return_timestamps'
+    are correctly passed through to the Hugging Face Inference API.
+    """
+    client = setup_client()
+    audio_file_path = "tests/test-data/test_audio.mp3"
+
+    try:
+        # Use Hugging Face-specific feature
+        result = client.audio.transcriptions.create(
+            model="huggingface:openai/whisper-large-v3",
+            file=audio_file_path,
+            return_timestamps="word",  # HF-specific param for word-level timestamps
+        )
+
+        assert len(result.text) > 0, "Hugging Face returned empty transcription"
+
+        # If return_timestamps worked, result should have words with timestamps
+        if hasattr(result, "words") and result.words:
+            # Verify at least some words have timestamps
+            words_with_timestamps = [
+                w for w in result.words if w.start is not None and w.end is not None
+            ]
+            assert (
+                len(words_with_timestamps) > 0
+            ), "No words with timestamps found in result"
+
+    except FileNotFoundError:
+        pytest.skip("Test audio file not found. Skipping Hugging Face feature test.")
+    except Exception as e:
+        pytest.fail(f"Error testing Hugging Face word timestamps feature: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -21,16 +21,19 @@ COMMON_PARAMS: Dict[str, Dict[str, Optional[str]]] = {
         "openai": "language",
         "deepgram": "language",
         "google": "language_code",
+        "huggingface": None,  # Not supported by Inference API
     },
     "prompt": {
         "openai": "prompt",
         "deepgram": "keywords",
         "google": "speech_contexts",
+        "huggingface": None,  # Not supported
     },
     "temperature": {
         "openai": "temperature",
         "deepgram": None,  # Not supported
         "google": None,  # Not supported
+        "huggingface": "temperature",  # Supported as generation param
     },
 }
 
@@ -108,6 +111,20 @@ PROVIDER_PARAMS: Dict[str, Set[str]] = {
         # Streaming
         "interim_results",  # Boolean
         "single_utterance",  # Boolean (stop after one utterance)
+    },
+    "huggingface": {
+        # Basic parameters
+        "model",  # Model ID on Hugging Face Hub
+        "temperature",  # Generation temperature
+        # API options
+        "return_timestamps",  # Boolean or "word" or "char"
+        "use_cache",  # Boolean: use cached inference
+        "wait_for_model",  # Boolean: wait if model is loading
+        # Generation parameters
+        "top_k",  # Integer: top-k sampling
+        "top_p",  # Float: nucleus sampling
+        "max_length",  # Integer: maximum output length
+        "do_sample",  # Boolean: enable sampling
     },
 }
 
