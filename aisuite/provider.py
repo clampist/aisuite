@@ -39,8 +39,15 @@ class ProviderFactory:
     @classmethod
     def create_provider(cls, provider_key, config):
         """Dynamically load and create an instance of a provider based on the naming convention."""
+        # Handle special cases for provider naming
+        if provider_key == "google-rest":
+            provider_key = "google_rest"
+        
         # Convert provider_key to the expected module and class names
-        provider_class_name = f"{provider_key.capitalize()}Provider"
+        if provider_key == "google_rest":
+            provider_class_name = "GoogleRestProvider"
+        else:
+            provider_class_name = f"{provider_key.capitalize()}Provider"
         provider_module_name = f"{provider_key}_provider"
 
         module_path = f"aisuite.providers.{provider_module_name}"

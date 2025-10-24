@@ -8,7 +8,7 @@ Simple, unified interface to multiple Generative AI providers.
 `aisuite` makes it easy for developers to interact with multiple Gen-AI services through a standardized interface. Using an interface similar to OpenAI's, `aisuite` supports **chat completions** and **audio transcription**, making it easy to work with the most popular AI providers and compare results. It is a thin wrapper around python client libraries, and allows creators to seamlessly swap out and test different providers without changing their code.
 
 All of the top providers are supported.
-Sample list of supported providers include - Anthropic, AWS, Azure, Cerebras, Cohere, Google, Groq, HuggingFace, Ollama, Mistral, OpenAI, Sambanova, Watsonx and others.
+Sample list of supported providers include - Anthropic, AWS, Azure, Cerebras, Cohere, Google (Vertex AI & REST API), Groq, HuggingFace, Ollama, Mistral, OpenAI, Sambanova, Watsonx and others.
 
 To maximize stability, `aisuite` uses either the HTTP endpoint or the SDK for making calls to the provider.
 
@@ -79,6 +79,59 @@ Note that the model name in the create() call uses the format - `<provider>:<mod
 For a list of provider values, you can look at the directory - `aisuite/providers/`. The list of supported providers are of the format - `<provider>_provider.py` in that directory. We welcome  providers adding support to this library by adding an implementation file in this directory. Please see section below for how to contribute.
 
 For more examples, check out the `examples` directory where you will find several notebooks that you can run to experiment with the interface.
+
+## Google Gemini REST API
+
+aisuite now supports Google Gemini through both Vertex AI and REST API modes:
+
+### REST API Mode (Recommended for most users)
+
+Simple setup with just an API key:
+
+```python
+import aisuite as ai
+
+# Configure with API key
+client = ai.Client({
+    "google-rest": {
+        "api_key": "your-google-api-key"  # or use GOOGLE_API_KEY env var
+    }
+})
+
+# Use Gemini models
+response = client.chat.completions.create(
+    model="google-rest:gemini-2.0-flash-exp",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+**Benefits:**
+- ✅ Simple setup (API key only)
+- ✅ No Google Cloud project required
+- ✅ Free tier available
+- ✅ No billing configuration needed
+
+### Vertex AI Mode (Enterprise features)
+
+For advanced features like audio transcription:
+
+```python
+# Requires Google Cloud project setup
+client = ai.Client({
+    "google": {
+        "project_id": "your-project-id",
+        "region": "us-central1",
+        "application_credentials": "/path/to/service-account.json"
+    }
+})
+
+response = client.chat.completions.create(
+    model="google:gemini-2.0-flash-exp",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+For detailed setup instructions, see the [Google REST API Guide](guides/google_rest.md).
 
 ## Adding support for a provider
 
