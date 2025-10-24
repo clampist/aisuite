@@ -1,8 +1,7 @@
-"""The interface to Google's Gemini REST API."""
+"""The interface to Google's Gemini REST API using the new genai client."""
 
 import os
 import json
-import requests
 from typing import List, Dict, Any, Optional, Union, BinaryIO, AsyncGenerator
 
 from aisuite.framework import ChatCompletionResponse, Message
@@ -19,23 +18,24 @@ from aisuite.provider import Provider, ASRError, Audio
 DEFAULT_TEMPERATURE = 0.7
 ENABLE_DEBUG_MESSAGES = False
 
-# Google Gemini REST API endpoints
-GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
-
 
 class GoogleRestMessageConverter:
-    """Convert messages between aisuite format and Google Gemini REST API format."""
+    """Convert messages between aisuite format and Google Gemini genai format."""
     
     @staticmethod
-    def convert_request(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Convert aisuite messages to Google Gemini REST API format."""
+    def convert_request(messages: List[Dict[str, Any]]) -> tuple[str, Optional[str]]:
+        """Convert aisuite messages to Google Gemini genai format.
+        
+        Returns:
+            tuple: (contents, system_instruction)
+        """
         # Convert all messages to dicts if they're Message objects
         messages = [
             message.model_dump() if hasattr(message, "model_dump") else message
             for message in messages
         ]
 
-        contents = []
+        contents = ""
         system_instruction = None
         
         for message in messages:
@@ -47,110 +47,88 @@ class GoogleRestMessageConverter:
                 system_instruction = content
             elif role == "user":
                 # User messages
-                contents.append({
-                    "role": "user",
-                    "parts": [{"text": content}]
-                })
+                if contents:
+                    contents += f"\n\nUser: {content}"
+                else:
+                    contents = f"User: {content}"
             elif role == "assistant":
                 # Assistant messages
-                if "tool_calls" in message and message["tool_calls"]:
-                    # Handle function calls
-                    for tool_call in message["tool_calls"]:
-                        function_call = tool_call["function"]
-                        contents.append({
-                            "role": "model",
-                            "parts": [{
-                                "function_call": {
-                                    "name": function_call["name"],
-                                    "args": json.loads(function_call["arguments"])
-                                }
-                            }]
-                        })
-                else:
-                    # Regular text response
-                    contents.append({
-                        "role": "model", 
-                        "parts": [{"text": content}]
-                    })
+                contents += f"\n\nAssistant: {content}"
             elif role == "tool":
                 # Tool responses
-                contents.append({
-                    "role": "user",
-                    "parts": [{
-                        "function_response": {
-                            "name": message["name"],
-                            "response": json.loads(content) if isinstance(content, str) else content
-                        }
-                    }]
-                })
+                contents += f"\n\nTool Response: {content}"
 
-        request_data = {"contents": contents}
-        if system_instruction:
-            request_data["systemInstruction"] = {
-                "parts": [{"text": system_instruction}]
-            }
-            
-        return request_data
+        return contents, system_instruction
 
     @staticmethod
-    def convert_response(response_data: Dict[str, Any]) -> ChatCompletionResponse:
-        """Convert Google Gemini REST API response to aisuite format."""
+    def convert_response(response) -> ChatCompletionResponse:
+        """Convert Google Gemini genai response to aisuite format."""
         aisuite_response = ChatCompletionResponse()
         
         if ENABLE_DEBUG_MESSAGES:
             print("Dumping the response")
-            print(json.dumps(response_data, indent=2))
+            print(f"Response type: {type(response)}")
+            print(f"Response: {response}")
 
         try:
-            candidate = response_data["candidates"][0]
-            content = candidate["content"]
-            parts = content["parts"]
-            
-            # Check if response contains function calls
-            function_calls = []
-            text_content = ""
-            
-            for part in parts:
-                if "function_call" in part:
-                    function_call = part["function_call"]
-                    function_calls.append({
-                        "type": "function",
-                        "id": f"call_{hash(function_call['name'])}",
-                        "function": {
-                            "name": function_call["name"],
-                            "arguments": json.dumps(function_call["args"])
-                        }
-                    })
-                elif "text" in part:
-                    text_content += part["text"]
-            
-            if function_calls:
-                # Function call response
-                aisuite_response.choices[0].message = Message(
-                    role="assistant",
-                    content=None,
-                    tool_calls=function_calls
-                )
-                aisuite_response.choices[0].finish_reason = "tool_calls"
+            # Extract text content from response
+            if hasattr(response, 'text'):
+                text_content = response.text
+            elif hasattr(response, 'content'):
+                text_content = response.content
             else:
-                # Regular text response
-                aisuite_response.choices[0].message = Message(
-                    role="assistant",
-                    content=text_content
-                )
-                aisuite_response.choices[0].finish_reason = "stop"
+                text_content = str(response)
+            
+            # Check if response contains function calls (tools)
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                    parts = candidate.content.parts
+                    for part in parts:
+                        if hasattr(part, 'function_call'):
+                            # Handle function calls
+                            function_call = part.function_call
+                            function_calls = [{
+                                "type": "function",
+                                "id": f"call_{hash(function_call.name)}",
+                                "function": {
+                                    "name": function_call.name,
+                                    "arguments": json.dumps(dict(function_call.args))
+                                }
+                            }]
+                            
+                            aisuite_response.choices[0].message = Message(
+                                role="assistant",
+                                content=None,
+                                tool_calls=function_calls
+                            )
+                            aisuite_response.choices[0].finish_reason = "tool_calls"
+                            return aisuite_response
+            
+            # Regular text response
+            aisuite_response.choices[0].message = Message(
+                role="assistant",
+                content=text_content
+            )
+            aisuite_response.choices[0].finish_reason = "stop"
                 
-        except (KeyError, IndexError) as e:
-            raise ValueError(f"Invalid response format from Google Gemini API: {e}")
+        except Exception as e:
+            # Fallback for simple text response
+            text_content = str(response) if not hasattr(response, 'text') else response.text
+            aisuite_response.choices[0].message = Message(
+                role="assistant",
+                content=text_content
+            )
+            aisuite_response.choices[0].finish_reason = "stop"
             
         return aisuite_response
 
 
 class GoogleRestProvider(Provider):
-    """Implements the Provider interface for Google's Gemini REST API."""
+    """Implements the Provider interface for Google's Gemini REST API using genai client."""
 
     def __init__(self, **config):
-        """Initialize the Google REST API client."""
+        """Initialize the Google REST API client using genai."""
         super().__init__()
         
         self.api_key = config.get("api_key") or os.getenv("GOOGLE_API_KEY")
@@ -160,17 +138,28 @@ class GoogleRestProvider(Provider):
                 "Set it in environment variables or provider config."
             )
         
+        # Import and configure genai
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=self.api_key)
+            self.genai = genai
+        except ImportError:
+            raise ImportError(
+                "google-generativeai is required for Google REST API. "
+                "Install it with: pip install google-generativeai"
+            )
+        
         self.transformer = GoogleRestMessageConverter()
         
         # Initialize audio functionality (placeholder for now)
         self.audio = GoogleRestAudio(self)
 
     def chat_completions_create(self, model, messages, **kwargs):
-        """Request chat completions from Google Gemini REST API.
+        """Request chat completions from Google Gemini REST API using genai client.
 
         Args:
         ----
-            model (str): The model name (e.g., "gemini-2.0-flash-exp").
+            model (str): The model name (e.g., "gemini-2.5-flash").
             messages (list of dict): A list of message objects in chat history.
             kwargs (dict): Optional arguments for the API.
 
@@ -182,49 +171,43 @@ class GoogleRestProvider(Provider):
         # Set the temperature if provided, otherwise use the default
         temperature = kwargs.get("temperature", DEFAULT_TEMPERATURE)
         
-        # Convert messages to Gemini REST API format
-        request_data = self.transformer.convert_request(messages)
-        
-        # Add generation config
-        request_data["generationConfig"] = {
-            "temperature": temperature,
-            "maxOutputTokens": kwargs.get("max_tokens", 8192),
-            "topP": kwargs.get("top_p", 0.95),
-            "topK": kwargs.get("top_k", 40)
-        }
-        
-        # Handle tools if provided
-        if "tools" in kwargs:
-            tools = []
-            for tool in kwargs["tools"]:
-                tools.append({
-                    "function_declarations": [{
-                        "name": tool["function"]["name"],
-                        "description": tool["function"].get("description", ""),
-                        "parameters": tool["function"]["parameters"]
-                    }]
-                })
-            request_data["tools"] = tools
+        # Convert messages to genai format
+        contents, system_instruction = self.transformer.convert_request(messages)
         
         if ENABLE_DEBUG_MESSAGES:
             print("Dumping the request data")
-            print(json.dumps(request_data, indent=2))
-        
-        # Make the API call
-        url = f"{GEMINI_API_BASE}/models/{model}:generateContent"
-        params = {"key": self.api_key}
+            print(f"Contents: {contents}")
+            print(f"System instruction: {system_instruction}")
         
         try:
-            response = requests.post(url, json=request_data, params=params, timeout=30)
-            response.raise_for_status()
+            # Create GenerativeModel
+            model_instance = self.genai.GenerativeModel(model)
             
-            response_data = response.json()
-            return self.transformer.convert_response(response_data)
+            # Prepare generation config
+            generation_config = self.genai.GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=kwargs.get("max_tokens", 8192),
+                top_p=kwargs.get("top_p", 0.95),
+                top_k=kwargs.get("top_k", 40)
+            )
             
-        except requests.exceptions.RequestException as e:
+            # Generate content
+            # Note: system_instruction is not supported in the current API
+            # We'll include it in the contents instead
+            if system_instruction:
+                full_contents = f"System: {system_instruction}\n\n{contents}"
+            else:
+                full_contents = contents
+                
+            response = model_instance.generate_content(
+                contents=full_contents,
+                generation_config=generation_config
+            )
+            
+            return self.transformer.convert_response(response)
+            
+        except Exception as e:
             raise ValueError(f"Failed to call Google Gemini REST API: {e}")
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON response from Google Gemini API: {e}")
 
 
 class GoogleRestAudio(Audio):

@@ -31,7 +31,7 @@ def basic_usage_example():
     
     # Simple chat completion
     response = client.chat.completions.create(
-        model="google-rest:gemini-2.0-flash-exp",
+        model="google-rest:gemini-2.5-flash",
         messages=[
             {"role": "user", "content": "Hello! Can you tell me a joke?"}
         ],
@@ -61,7 +61,7 @@ def conversation_example():
     ]
     
     response = client.chat.completions.create(
-        model="google-rest:gemini-2.0-flash-exp",
+        model="google-rest:gemini-2.5-flash",
         messages=messages,
         temperature=0.5
     )
@@ -73,7 +73,7 @@ def conversation_example():
     messages.append({"role": "user", "content": "Can you give me a simple example?"})
     
     response = client.chat.completions.create(
-        model="google-rest:gemini-2.0-flash-exp",
+        model="google-rest:gemini-2.5-flash",
         messages=messages,
         temperature=0.5
     )
@@ -108,7 +108,7 @@ def tool_calling_example():
     })
     
     response = client.chat.completions.create(
-        model="google-rest:gemini-2.0-flash-exp",
+        model="google-rest:gemini-2.5-flash",
         messages=[
             {"role": "user", "content": "What's the weather in Tokyo and what time is it?"}
         ],
@@ -135,7 +135,7 @@ def model_comparison_example():
     models = [
         "google-rest:gemini-1.5-flash",
         "google-rest:gemini-1.5-pro",
-        "google-rest:gemini-2.0-flash-exp"
+        "google-rest:gemini-2.5-flash"
     ]
     
     question = "Explain quantum computing in one sentence."

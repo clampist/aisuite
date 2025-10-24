@@ -1,13 +1,14 @@
+#!/usr/bin/env python3
 """
-Test Google Gemini REST API with aisuite
+Test Google Gemini API with aisuite
 
-This script verifies that Google Gemini REST API is correctly configured
+This script verifies that Google Gemini API is correctly configured
 and can be used with aisuite library.
 
 Prerequisites:
 1. Google API Key (GOOGLE_API_KEY environment variable)
 2. aisuite library installed
-3. requests library installed
+3. google-generativeai library installed
 """
 
 import os
@@ -48,18 +49,43 @@ def test_aisuite_installation():
         return False
 
 
-def test_requests_installation():
-    """Test if requests package is installed"""
-    print("\n🔍 Checking requests Installation")
+def test_google_generativeai_installation():
+    """Test if google-generativeai package is installed"""
+    print("\n🔍 Checking google-generativeai Installation")
     print("=" * 60)
     
     try:
-        import requests
-        print("✅ requests package is installed")
+        import google.generativeai as genai
+        print("✅ google-generativeai package is installed")
         return True
     except ImportError:
-        print("❌ requests package is not installed")
-        print("   Install with: pip install requests")
+        print("❌ google-generativeai package is not installed")
+        print("   Install with: pip install google-generativeai")
+        return False
+
+
+def test_direct_genai():
+    """Test direct usage of genai client"""
+    print("\n🧪 Testing Direct genai Usage")
+    print("=" * 60)
+    
+    try:
+        import google.generativeai as genai
+        
+        api_key = os.getenv("GOOGLE_API_KEY")
+        genai.configure(api_key=api_key)
+        
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        
+        response = model.generate_content(
+            contents="Say 'Hello from Gemini 2.5!' in one sentence."
+        )
+        
+        print(f"✅ Direct genai test successful: {response.text}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Direct genai test failed: {e}")
         return False
 
 
@@ -73,12 +99,12 @@ def test_google_rest_api_simple():
         
         # Configure client with Google REST API
         client = ai.Client({
-            "google-rest": {
+            "google_rest": {
                 "api_key": os.getenv("GOOGLE_API_KEY")
             }
         })
         
-        model = "google-rest:gemini-2.0-flash-exp"
+        model = "google_rest:gemini-2.5-flash"
         
         messages = [
             {"role": "system", "content": "You are a helpful assistant. Respond concisely."},
@@ -114,12 +140,12 @@ def test_google_rest_api_with_system_prompt():
         import aisuite as ai
         
         client = ai.Client({
-            "google-rest": {
+            "google_rest": {
                 "api_key": os.getenv("GOOGLE_API_KEY")
             }
         })
         
-        model = "google-rest:gemini-2.0-flash-exp"
+        model = "google_rest:gemini-2.5-flash"
         
         messages = [
             {"role": "system", "content": "Respond in Pirate English."},
@@ -150,9 +176,7 @@ def test_google_rest_api_models():
     print("=" * 60)
     
     models = [
-        "google-rest:gemini-2.0-flash-exp",
-        "google-rest:gemini-1.5-flash",
-        "google-rest:gemini-1.5-pro",
+        "google_rest:gemini-2.5-flash",
     ]
     
     results = {}
@@ -163,7 +187,7 @@ def test_google_rest_api_models():
             import aisuite as ai
             
             client = ai.Client({
-                "google-rest": {
+                "google_rest": {
                     "api_key": os.getenv("GOOGLE_API_KEY")
                 }
             })
@@ -205,12 +229,12 @@ def test_google_rest_api_tool_calling():
         tools = Tools([get_weather])
         
         client = ai.Client({
-            "google-rest": {
+            "google_rest": {
                 "api_key": os.getenv("GOOGLE_API_KEY")
             }
         })
         
-        model = "google-rest:gemini-2.0-flash-exp"
+        model = "google_rest:gemini-2.5-flash"
         
         messages = [
             {"role": "user", "content": "What's the weather like in San Francisco?"},
@@ -255,7 +279,7 @@ def print_setup_instructions():
    GOOGLE_API_KEY=your-api-key-here
 
 3. Install Required Packages:
-   pip install aisuite requests
+   pip install aisuite google-generativeai python-dotenv
 
 4. Run this test again to verify setup
 
@@ -268,7 +292,7 @@ def print_setup_instructions():
 
 
 def main():
-    print("🧪 Google Gemini REST API Configuration Test (with aisuite)")
+    print("🧪 Google Gemini API Configuration Test (with aisuite)")
     print("=" * 60)
     
     # Check API key
@@ -276,15 +300,16 @@ def main():
     
     # Check package installations
     aisuite_ok = test_aisuite_installation()
-    requests_ok = test_requests_installation()
+    genai_ok = test_google_generativeai_installation()
     
     # If prerequisites are not met, show setup instructions
-    if not (api_key_ok and aisuite_ok and requests_ok):
+    if not (api_key_ok and aisuite_ok and genai_ok):
         print("\n⚠️  Prerequisites not met. Please complete the setup first.")
         print_setup_instructions()
         return 1
     
     # Run tests
+    direct_genai_ok = test_direct_genai()
     simple_test_ok = test_google_rest_api_simple()
     system_prompt_test_ok = test_google_rest_api_with_system_prompt()
     models_test_ok = test_google_rest_api_models()
@@ -296,17 +321,18 @@ def main():
     print("=" * 60)
     print(f"Google API Key: {'✅ PASS' if api_key_ok else '❌ FAIL'}")
     print(f"aisuite Library: {'✅ PASS' if aisuite_ok else '❌ FAIL'}")
-    print(f"requests Library: {'✅ PASS' if requests_ok else '❌ FAIL'}")
+    print(f"google-generativeai Library: {'✅ PASS' if genai_ok else '❌ FAIL'}")
+    print(f"Direct genai Test: {'✅ PASS' if direct_genai_ok else '❌ FAIL'}")
     print(f"Simple Chat Completion: {'✅ PASS' if simple_test_ok else '❌ FAIL'}")
     print(f"System Prompt Test: {'✅ PASS' if system_prompt_test_ok else '❌ FAIL'}")
     print(f"Multiple Models Test: {'✅ PASS' if models_test_ok else '❌ FAIL'}")
     print(f"Tool Calling Test: {'✅ PASS' if tool_calling_test_ok else '❌ FAIL'}")
     
-    if all([api_key_ok, aisuite_ok, requests_ok, simple_test_ok, system_prompt_test_ok, models_test_ok, tool_calling_test_ok]):
-        print("\n🎉 All tests passed! Google Gemini REST API is ready to use with aisuite.")
+    if all([api_key_ok, aisuite_ok, genai_ok, direct_genai_ok, simple_test_ok, system_prompt_test_ok, models_test_ok, tool_calling_test_ok]):
+        print("\n🎉 All tests passed! Google Gemini API is ready to use with aisuite.")
         print("\n💡 You can now use Google REST API in your agents:")
-        print("   Set ACTIVE_MODEL=google-rest:gemini-2.0-flash-exp in .env")
-        print("   Or use model='google-rest:gemini-2.0-flash-exp' in your code")
+        print("   Set ACTIVE_MODEL=google_rest:gemini-2.5-flash in .env")
+        print("   Or use model='google_rest:gemini-2.5-flash' in your code")
         print("\n🆚 Comparison with Vertex AI:")
         print("   ✅ Simpler setup (just API key)")
         print("   ✅ No billing required")

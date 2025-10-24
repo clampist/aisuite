@@ -100,7 +100,7 @@ client = ai.Client({
 
 # Use Gemini models
 response = client.chat.completions.create(
-    model="google-rest:gemini-2.0-flash-exp",
+    model="google-rest:gemini-2.5-flash",
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```
@@ -126,7 +126,7 @@ client = ai.Client({
 })
 
 response = client.chat.completions.create(
-    model="google:gemini-2.0-flash-exp",
+    model="google:gemini-2.5-flash",
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```

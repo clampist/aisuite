@@ -41,7 +41,7 @@ client = ai.Client({
 
 # Simple chat completion
 response = client.chat.completions.create(
-    model="google-rest:gemini-2.0-flash-exp",
+    model="google-rest:gemini-2.5-flash",
     messages=[
         {"role": "user", "content": "Hello!"}
     ]
@@ -54,9 +54,8 @@ print(response.choices[0].message.content)
 
 | Model | Description | Use Case |
 |-------|-------------|----------|
-| `google-rest:gemini-2.0-flash-exp` | Latest experimental model | Best performance |
-| `google-rest:gemini-1.5-flash` | Fast and efficient | Quick responses |
-| `google-rest:gemini-1.5-pro` | Most capable model | Complex tasks |
+| `google-rest:gemini-2.5-flash` | Latest fast model | Best performance |
+
 
 ## 🔧 Configuration Options
 
@@ -86,7 +85,7 @@ import aisuite as ai
 client = ai.Client()
 
 response = client.chat.completions.create(
-    model="google-rest:gemini-2.0-flash-exp",
+    model="google-rest:gemini-2.5-flash",
     messages=[
         {"role": "user", "content": "What is machine learning?"}
     ],
@@ -105,7 +104,7 @@ messages = [
 ]
 
 response = client.chat.completions.create(
-    model="google-rest:gemini-2.0-flash-exp",
+    model="google-rest:gemini-2.5-flash",
     messages=messages
 )
 
@@ -114,7 +113,7 @@ messages.append({"role": "assistant", "content": response.choices[0].message.con
 messages.append({"role": "user", "content": "Can you show me an example?"})
 
 response = client.chat.completions.create(
-    model="google-rest:gemini-2.0-flash-exp",
+    model="google-rest:gemini-2.5-flash",
     messages=messages
 )
 ```
@@ -131,7 +130,7 @@ def get_weather(location: str) -> str:
 tools = Tools([get_weather])
 
 response = client.chat.completions.create(
-    model="google-rest:gemini-2.0-flash-exp",
+    model="google-rest:gemini-2.5-flash",
     messages=[
         {"role": "user", "content": "What's the weather in Tokyo?"}
     ],
@@ -175,8 +174,8 @@ Error: Invalid model format. Expected 'provider:model'
 
 **Solution**: Use correct format:
 ```python
-model="google-rest:gemini-2.0-flash-exp"  # ✅ Correct
-model="gemini-2.0-flash-exp"              # ❌ Wrong
+model="google-rest:gemini-2.5-flash"  # ✅ Correct
+model="gemini-2.5-flash"              # ❌ Wrong
 ```
 
 #### 3. Module Import Error
@@ -204,7 +203,7 @@ ENABLE_DEBUG_MESSAGES = True
 1. **Use appropriate models**:
    - `gemini-1.5-flash` for speed
    - `gemini-1.5-pro` for quality
-   - `gemini-2.0-flash-exp` for latest features
+   - `gemini-2.5-flash` for latest features
 
 2. **Optimize temperature**:
    - `0.0-0.3`: Deterministic responses
