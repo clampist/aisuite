@@ -72,52 +72,80 @@ class GoogleRestMessageConverter:
 
         try:
             # Extract text content from response
+            text_content = None
+            
+            # Try different ways to extract text content
             if hasattr(response, 'text'):
                 text_content = response.text
             elif hasattr(response, 'content'):
                 text_content = response.content
+            elif hasattr(response, 'candidates') and response.candidates:
+                # Handle structured response format
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content'):
+                    content = candidate.content
+                    if hasattr(content, 'parts') and content.parts:
+                        # Extract text from parts
+                        text_parts = []
+                        for part in content.parts:
+                            if hasattr(part, 'text'):
+                                text_parts.append(part.text)
+                            elif hasattr(part, 'function_call'):
+                                # Handle function calls
+                                function_call = part.function_call
+                                function_calls = [{
+                                    "type": "function",
+                                    "id": f"call_{hash(function_call.name)}",
+                                    "function": {
+                                        "name": function_call.name,
+                                        "arguments": json.dumps(dict(function_call.args))
+                                    }
+                                }]
+                                
+                                aisuite_response.choices[0].message = Message(
+                                    role="assistant",
+                                    content=None,
+                                    tool_calls=function_calls
+                                )
+                                aisuite_response.choices[0].finish_reason = "tool_calls"
+                                return aisuite_response
+                        text_content = " ".join(text_parts) if text_parts else None
+                    elif hasattr(content, 'text'):
+                        text_content = content.text
             else:
                 text_content = str(response)
             
-            # Check if response contains function calls (tools)
-            if hasattr(response, 'candidates') and response.candidates:
-                candidate = response.candidates[0]
-                if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
-                    parts = candidate.content.parts
-                    for part in parts:
-                        if hasattr(part, 'function_call'):
-                            # Handle function calls
-                            function_call = part.function_call
-                            function_calls = [{
-                                "type": "function",
-                                "id": f"call_{hash(function_call.name)}",
-                                "function": {
-                                    "name": function_call.name,
-                                    "arguments": json.dumps(dict(function_call.args))
-                                }
-                            }]
-                            
-                            aisuite_response.choices[0].message = Message(
-                                role="assistant",
-                                content=None,
-                                tool_calls=function_calls
-                            )
-                            aisuite_response.choices[0].finish_reason = "tool_calls"
-                            return aisuite_response
+            # If we still don't have text content, try to extract it from the response object
+            if not text_content:
+                if hasattr(response, '__dict__'):
+                    # Try to find text in the response object attributes
+                    for attr_name, attr_value in response.__dict__.items():
+                        if isinstance(attr_value, str) and len(attr_value) > 0:
+                            text_content = attr_value
+                            break
+                
+                if not text_content:
+                    text_content = str(response)
             
             # Regular text response
             aisuite_response.choices[0].message = Message(
                 role="assistant",
-                content=text_content
+                content=text_content or "No response content"
             )
             aisuite_response.choices[0].finish_reason = "stop"
                 
         except Exception as e:
             # Fallback for simple text response
+            if ENABLE_DEBUG_MESSAGES:
+                print(f"Error in response conversion: {e}")
+                print(f"Response object: {response}")
+                print(f"Response type: {type(response)}")
+                print(f"Response attributes: {dir(response) if hasattr(response, '__dict__') else 'No attributes'}")
+            
             text_content = str(response) if not hasattr(response, 'text') else response.text
             aisuite_response.choices[0].message = Message(
                 role="assistant",
-                content=text_content
+                content=text_content or "Error processing response"
             )
             aisuite_response.choices[0].finish_reason = "stop"
             
